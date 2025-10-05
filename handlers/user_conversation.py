@@ -153,41 +153,52 @@ async def proceed_to_payment_callback(update: Update, context: ContextTypes.DEFA
     context.user_data['message_id'] = message.message_id
     return K.STATE_WAITING_PACKAGE_PAYMENT
 
+# File: handlers/user_conversation.py
+
 async def package_payment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.effective_user
-    package_name = context.user_data.get('package_to_buy')
-    if not package_name:
-        await update.message.reply_text("Sesi pembelian tidak ditemukan. Silakan ulangi.")
+    config.logger.info(f"[Payment Paket] Menerima bukti pembayaran dari user: {user.id}")
+
+    try:
+        package_name = context.user_data.get('package_to_buy')
+        if not package_name:
+            await update.message.reply_text("Sesi pembelian tidak ditemukan. Silakan ulangi.")
+            return ConversationHandler.END
+
+        payment_file_id = update.message.photo[-1].file_id if update.message.photo else None
+        if not payment_file_id:
+            await update.message.reply_text("⚠️ Harap kirim bukti pembayaran berupa FOTO.")
+            return K.STATE_WAITING_PACKAGE_PAYMENT
+
+        proof_msg_id = update.message.message_id
+        qris_msg_id = context.user_data.pop('message_id', None)
+
+        config.logger.info(f"[Payment Paket] Mencoba update DB untuk user: {user.id}")
+        # --- PERHATIKAN QUERY INI, PASTIKAN MENGGUNAKAN %s ---
+        db.db_execute("""
+            UPDATE user_rewards 
+            SET pending_qris_msg_id = %s, pending_proof_msg_id = %s 
+            WHERE u_id = %s
+        """, (qris_msg_id, proof_msg_id, user.id))
+        config.logger.info(f"[Payment Paket] BERHASIL update DB untuk user: {user.id}")
+        
+        admin_caption = (f"🛍️ *Pembelian Paket {package_name.title()}*\n\n"
+                         f"Dari: @{user.username or user.full_name} (`{user.id}`)")
+        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(f"✅ Konfirmasi Paket", callback_data=f"confirm_package:{package_name}:{user.id}")]])
+        await context.bot.send_photo(
+            config.ADMIN_GROUP_ID, photo=payment_file_id, caption=admin_caption,
+            parse_mode="Markdown", reply_markup=keyboard)
+
+        notif_text = "✅ Bukti pembayaran diterima dan sedang diverifikasi oleh admin. Pesan ini akan otomatis terhapus setelah dikonfirmasi."
+        await context.bot.send_message(user.id, notif_text, parse_mode="Markdown")
+        
+        context.user_data.clear()
         return ConversationHandler.END
 
-    payment_file_id = update.message.photo[-1].file_id if update.message.photo else None
-    if not payment_file_id:
-        await update.message.reply_text("⚠️ Harap kirim bukti pembayaran berupa FOTO.")
-        return K.STATE_WAITING_PACKAGE_PAYMENT
-
-    # --- LOGIKA BARU: SIMPAN ID, JANGAN HAPUS ---
-    proof_msg_id = update.message.message_id
-    qris_msg_id = context.user_data.pop('message_id', None)
-
-    db.db_execute("""
-        UPDATE user_rewards 
-        SET pending_qris_msg_id = %s, pending_proof_msg_id = %s 
-        WHERE u_id = %s
-    """, (qris_msg_id, proof_msg_id, user.id))
-    
-    # Kirim ke admin seperti biasa
-    admin_caption = (f"🛍️ *Pembelian Paket {package_name.title()}*\n\n"
-                     f"Dari: @{user.username or user.full_name} (`{user.id}`)")
-    keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(f"✅ Konfirmasi Paket", callback_data=f"confirm_package:{package_name}:{user.id}")]])
-    await context.bot.send_photo(
-        config.ADMIN_GROUP_ID, photo=payment_file_id, caption=admin_caption,
-        parse_mode="Markdown", reply_markup=keyboard)
-
-    notif_text = "✅ Bukti pembayaran diterima dan sedang diverifikasi oleh admin. Pesan ini akan otomatis terhapus setelah dikonfirmasi."
-    await context.bot.send_message(user.id, notif_text, parse_mode="Markdown")
-    
-    context.user_data.clear()
-    return ConversationHandler.END
+    except Exception as e:
+        config.logger.error(f"[Payment Paket] GAGAL TOTAL untuk user {user.id}: {e}", exc_info=True)
+        await update.message.reply_text("⚠️ Maaf, terjadi kesalahan teknis saat memproses bukti pembayaran Anda. Silakan hubungi admin.")
+        return ConversationHandler.END
 
 # ==============================================================================
 # --- ALUR SUBMIT BARU ---
@@ -443,44 +454,53 @@ async def edit_user_handler_from_confirm(update: Update, context: ContextTypes.D
 # Di dalam file handlers/user_conversation.py
 # Ganti seluruh fungsi ini
 
+# File: handlers/user_conversation.py
+
 async def payment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
-    submission = db.get_last_pending_submission_by_user(user_id)
-    if not submission:
-        await update.message.reply_text("Sesi tidak ditemukan. Silakan /start ulang.")
-        return ConversationHandler.END
-    
-    payment_file_id = update.message.photo[-1].file_id if update.message.photo else None
-    if not payment_file_id:
-        await update.message.reply_text("⚠️ Gagal! Harap kirim bukti pembayaran berupa FOTO.")
-        return K.STATE_WAITING_PAYMENT
+    config.logger.info(f"[Payment Satuan] Menerima bukti pembayaran dari user: {user_id}")
 
-    # Tangkap ID pesan bukti transfer dari user
-    proof_msg_id = update.message.message_id
-    # Ambil ID pesan QRIS yang kita simpan sebelumnya
-    qris_msg_id = context.user_data.pop('qris_msg_id', None)
-    
-    unique_id = submission['unique_id']
-    
-    # Kirim pesan notifikasi ke user dan TANGKAP ID-NYA
-    final_text = "✅ *Pembayaran Terkirim!*\n\nTerima kasih. Bukti pembayaran Anda telah kami terima dan akan segera diperiksa oleh admin. Pesan ini akan otomatis terhapus setelah dikonfirmasi."
-    sent_notice_msg = await context.bot.send_message(user_id, final_text, parse_mode="Markdown")
-    notice_msg_id = sent_notice_msg.message_id
-    
-    # SIMPAN SEMUA ID PENTING ke database dalam satu perintah
-    db.update_submission(unique_id, {
-        "bot_qris_msg_id": qris_msg_id,
-        "user_proof_msg_id": proof_msg_id,
-        "user_notice_msg_id": notice_msg_id
-    })
-    
-    # Kirim ke admin seperti biasa
-    admin_caption = f"💰 *Bukti Pembayaran Diterima (Satuan)*\nID: `{unique_id}`"
-    keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("✅ Konfirmasi & Beri Poin", callback_data=f"confirm_payment:{unique_id}")]])
-    await context.bot.send_photo(config.ADMIN_GROUP_ID, payment_file_id, caption=admin_caption, reply_markup=keyboard, parse_mode="Markdown")
-    
-    context.user_data.clear()
-    return ConversationHandler.END
+    try:
+        submission = db.get_last_pending_submission_by_user(user_id)
+        if not submission:
+            config.logger.warning(f"[Payment Satuan] Sesi submission tidak ditemukan untuk user: {user_id}")
+            await update.message.reply_text("Sesi tidak ditemukan. Silakan /start ulang.")
+            return ConversationHandler.END
+        
+        config.logger.info(f"[Payment Satuan] Sesi ditemukan untuk ID: {submission['unique_id']}")
+
+        payment_file_id = update.message.photo[-1].file_id if update.message.photo else None
+        if not payment_file_id:
+            await update.message.reply_text("⚠️ Gagal! Harap kirim bukti pembayaran berupa FOTO.")
+            return K.STATE_WAITING_PAYMENT
+
+        proof_msg_id = update.message.message_id
+        qris_msg_id = context.user_data.pop('qris_msg_id', None)
+        unique_id = submission['unique_id']
+        
+        final_text = "✅ *Pembayaran Terkirim!*\n\nTerima kasih. Bukti pembayaran Anda telah kami terima dan akan segera diperiksa oleh admin. Pesan ini akan otomatis terhapus setelah dikonfirmasi."
+        sent_notice_msg = await context.bot.send_message(user_id, final_text, parse_mode="Markdown")
+        notice_msg_id = sent_notice_msg.message_id
+        
+        config.logger.info(f"[Payment Satuan] Mencoba update DB untuk ID: {unique_id}")
+        db.update_submission(unique_id, {
+            "bot_qris_msg_id": qris_msg_id,
+            "user_proof_msg_id": proof_msg_id,
+            "user_notice_msg_id": notice_msg_id
+        })
+        config.logger.info(f"[Payment Satuan] BERHASIL update DB untuk ID: {unique_id}")
+        
+        admin_caption = f"💰 *Bukti Pembayaran Diterima (Satuan)*\nID: `{unique_id}`"
+        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("✅ Konfirmasi & Beri Poin", callback_data=f"confirm_payment:{unique_id}")]])
+        await context.bot.send_photo(config.ADMIN_GROUP_ID, payment_file_id, caption=admin_caption, reply_markup=keyboard, parse_mode="Markdown")
+        
+        context.user_data.clear()
+        return ConversationHandler.END
+
+    except Exception as e:
+        config.logger.error(f"[Payment Satuan] GAGAL TOTAL untuk user {user_id}: {e}", exc_info=True)
+        await update.message.reply_text("⚠️ Maaf, terjadi kesalahan teknis saat memproses bukti pembayaran Anda. Silakan hubungi admin.")
+        return ConversationHandler.END
 
 async def cancel_submission_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
