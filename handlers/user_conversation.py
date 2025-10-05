@@ -333,7 +333,7 @@ async def confirm_final_continue_callback(update: Update, context: ContextTypes.
     submission_data = {
         "unique_id": str(uuid.uuid4()), "timestamp": datetime.now(timezone.utc).isoformat(),
         "u_id": user.id, "u_name": user.username or user.full_name, "status": "pending",
-        "post_link": "", "is_pinned": 0, "is_reward": 0, "submission_msg_id": None, **context.user_data
+        "post_link": "", "is_reward": 0, "submission_msg_id": None, **context.user_data
     }
     user_data = db.get_user_data(user.id) or {}
     admin_caption_prefix = "🆕 <b>Pengajuan Jastip Baru (Berbayar)</b>"
