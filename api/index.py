@@ -151,10 +151,21 @@ app = Flask(__name__)
 
 @app.route('/', methods=['POST'])
 def webhook() -> str:
+    """Webhook SYNC yang menginisialisasi dan memproses update."""
     try:
-        update_data = request.get_json()
-        update = Update.de_json(update_data, application.bot)
-        asyncio.run(application.process_update(update))
+        # Kita buat fungsi async internal untuk menjalankan semua tugas bot
+        async def process_update_async():
+            update_data = request.get_json()
+            update = Update.de_json(update_data, application.bot)
+            
+            # Menggunakan 'async with' adalah cara terbaik untuk memastikan
+            # bot diinisialisasi dan ditutup dengan benar setiap kali.
+            async with application:
+                await application.process_update(update)
+
+        # Jalankan fungsi async tersebut
+        asyncio.run(process_update_async())
+        
         return "ok"
     except Exception as e:
         config.logger.error(f"Error processing webhook: {e}", exc_info=True)
