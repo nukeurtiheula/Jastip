@@ -67,7 +67,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         menu_msg = await context.bot.send_message(chat_id, text, reply_markup=keyboard, parse_mode="Markdown")
         
         db.db_execute("INSERT INTO user_rewards (u_id) VALUES (%s) ON CONFLICT (u_id) DO NOTHING;", (user.id,))
-        db.db_execute("UPDATE user_rewards SET last_menu_id = ? WHERE u_id = ?", (menu_msg.message_id, user.id))
+        db.db_execute("UPDATE user_rewards SET last_menu_id = ? WHERE u_id = %s", (menu_msg.message_id, user.id))
 
     except Exception as e:
         # Jika ada error database, cetak ke Vercel Logs dan beri tahu user
@@ -222,7 +222,7 @@ async def mulai_submit_callback(update: Update, context: ContextTypes.DEFAULT_TY
             except: pass
             msg = await context.bot.send_message(user_id, text, parse_mode="Markdown", reply_markup=keyboard)
             context.user_data['interactive_message_id'] = msg.message_id
-    db.db_execute("UPDATE user_rewards SET last_menu_id = NULL WHERE u_id = ?", (user_id,))
+    db.db_execute("UPDATE user_rewards SET last_menu_id = NULL WHERE u_id = %s", (user_id,))
     return K.STATE_PHOTO
 
 async def photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
