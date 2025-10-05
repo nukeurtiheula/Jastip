@@ -1,3 +1,5 @@
+# File: api/index.py (Versi FINAL BOSS - Perbaikan NameError)
+
 import asyncio
 from flask import Flask, request
 from telegram import Update
@@ -13,21 +15,24 @@ import constants as K
 from handlers import user_conversation as usr_conv, user_callbacks as usr_cb
 from handlers import admin_conversation as adm_conv, admin_callbacks as adm_cb
 
-def main():
-    """Fungsi utama untuk menyiapkan dan menjalankan bot."""
-    db.init_db()
-    application = Application.builder().token(config.TOKEN).build()
+# ==============================================================================
+# ### BAGIAN YANG DIPERBAIKI ADA DI SINI ###
+# Kita definisikan SEMUANYA di luar fungsi agar bisa diakses secara global
+# ==============================================================================
 
-    # --- SEMUA CONVERSATION HANDLER DIDEFINISIKAN DI SINI ---
+# --- 2. Inisialisasi Bot ---
+# Kita beri nama 'application' agar tidak bentrok dengan Flask 'app'
+application = Application.builder().token(config.TOKEN).build()
+db.init_db()
 
-    # Alur submit dan edit oleh pengguna
-    user_submission_conv = ConversationHandler(
+# --- 3. Definisi ConversationHandler ---
+# (Ini adalah blok kode ConversationHandler-mu yang LENGKAP)
+user_submission_conv = ConversationHandler(
     entry_points=[
         CallbackQueryHandler(usr_conv.mulai_submit_callback, pattern="^mulai_submit$"),
         CallbackQueryHandler(usr_conv.user_edit_callback, pattern=r"^edit:"),
     ],
     states={
-        # State untuk alur submit baru (tidak berubah)
         K.STATE_PHOTO: [MessageHandler(filters.PHOTO & ~filters.COMMAND, usr_conv.photo_handler)],
         K.STATE_PET_FORMAT: [MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.pet_format_handler), CallbackQueryHandler(usr_conv.back_to_photo_step, pattern="^edit_photo_step$")],
         K.STATE_USER_TELE: [MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.user_tele_handler), CallbackQueryHandler(usr_conv.back_to_desc_step, pattern="^edit_desc_step$")],
@@ -41,35 +46,21 @@ def main():
         K.STATE_EDIT_DESC_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.edit_desc_handler_from_confirm)],
         K.STATE_EDIT_USER_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.edit_user_handler_from_confirm)],
         K.STATE_WAITING_PAYMENT: [MessageHandler(filters.PHOTO & ~filters.COMMAND, usr_conv.payment_handler)],
-        
-        # State untuk alur edit dari riwayat (TIDAK BERUBAH)
         K.STATE_EDIT_CHOICE: [
             CallbackQueryHandler(usr_conv.edit_choice_desc_callback, pattern="^edit_choice_desc$"),
             CallbackQueryHandler(usr_conv.edit_choice_user_callback, pattern="^edit_choice_user$"),
             CallbackQueryHandler(usr_conv.edit_choice_cancel_callback, pattern="^edit_choice_cancel$"),
         ],
-        
-        # --- PERUBAHAN UTAMA DI SINI ---
-        # Kita tambahkan cancel handler spesifik untuk state ini
-        K.STATE_EDIT_DESC: [
-            CommandHandler("cancel", usr_conv.cancel_riwayat_edit),
-            MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.edit_desc_handler)
-        ],
-        K.STATE_EDIT_USER: [
-            CommandHandler("cancel", usr_conv.cancel_riwayat_edit),
-            MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.edit_user_handler)
-        ],
+        K.STATE_EDIT_DESC: [CommandHandler("cancel", usr_conv.cancel_riwayat_edit), MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.edit_desc_handler)],
+        K.STATE_EDIT_USER: [CommandHandler("cancel", usr_conv.cancel_riwayat_edit), MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.edit_user_handler)],
     },
     fallbacks=[
-        # Fallback ini sekarang hanya berlaku untuk state submit baru
         CommandHandler("cancel", usr_conv.cancel),
         CallbackQueryHandler(usr_conv.cancel_submission_callback, pattern="^cancel_submission$"),
     ],
     per_message=False,
-    name="user_submission_conversation",
 )
-
-    # Alur pembelian paket oleh pengguna
+ # Alur pembelian paket oleh pengguna
     user_package_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(usr_conv.proceed_to_payment_callback, pattern=r"^proceed_payment:")],
         states={K.STATE_WAITING_PACKAGE_PAYMENT: [MessageHandler(filters.PHOTO, usr_conv.package_payment_handler)]},
