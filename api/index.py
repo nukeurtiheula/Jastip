@@ -28,72 +28,73 @@ db.init_db()
 # --- 3. Definisi ConversationHandler ---
 # (Ini adalah blok kode ConversationHandler-mu yang LENGKAP)
 user_submission_conv = ConversationHandler(
-        entry_points=[
-            CallbackQueryHandler(usr_conv.mulai_submit_callback, pattern="^mulai_submit$"),
-            CallbackQueryHandler(usr_conv.user_edit_callback, pattern=r"^edit:"),
+    entry_points=[
+    CallbackQueryHandler(usr_conv.mulai_submit_callback, pattern="^mulai_submit$"),
+    CallbackQueryHandler(usr_conv.user_edit_callback, pattern=r"^edit:"),
+    ],
+    states={
+    K.STATE_PHOTO: [MessageHandler(filters.PHOTO & ~filters.COMMAND, usr_conv.photo_handler)],
+    K.STATE_PET_FORMAT: [MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.pet_format_handler), CallbackQueryHandler(usr_conv.back_to_photo_step, pattern="^edit_photo_step$")],
+    K.STATE_USER_TELE: [MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.user_tele_handler), CallbackQueryHandler(usr_conv.back_to_desc_step, pattern="^edit_desc_step$")],
+    K.STATE_FINAL_CONFIRM: [
+        CallbackQueryHandler(usr_conv.confirm_final_continue_callback, pattern="^confirm_final_continue$"),
+        CallbackQueryHandler(usr_conv.confirm_final_edit_callback, pattern="^confirm_final_edit$"),
+        CallbackQueryHandler(usr_conv.cancel, pattern="^confirm_final_cancel$"),
+        CallbackQueryHandler(usr_conv.edit_final_choice_callback, pattern=r"^edit_final_"),
         ],
-        states={
-            K.STATE_PHOTO: [MessageHandler(filters.PHOTO & ~filters.COMMAND, usr_conv.photo_handler)],
-            K.STATE_PET_FORMAT: [MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.pet_format_handler), CallbackQueryHandler(usr_conv.back_to_photo_step, pattern="^edit_photo_step$")],
-            K.STATE_USER_TELE: [MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.user_tele_handler), CallbackQueryHandler(usr_conv.back_to_desc_step, pattern="^edit_desc_step$")],
-            K.STATE_FINAL_CONFIRM: [
-                CallbackQueryHandler(usr_conv.confirm_final_continue_callback, pattern="^confirm_final_continue$"),
-                CallbackQueryHandler(usr_conv.confirm_final_edit_callback, pattern="^confirm_final_edit$"),
-                CallbackQueryHandler(usr_conv.cancel, pattern="^confirm_final_cancel$"),
-                CallbackQueryHandler(usr_conv.edit_final_choice_callback, pattern=r"^edit_final_"),
-            ],
-            K.STATE_EDIT_PHOTO_CONFIRM: [MessageHandler(filters.PHOTO & ~filters.COMMAND, usr_conv.edit_photo_handler)],
-            K.STATE_EDIT_DESC_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.edit_desc_handler_from_confirm)],
-            K.STATE_EDIT_USER_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.edit_user_handler_from_confirm)],
-            K.STATE_WAITING_PAYMENT: [MessageHandler(filters.PHOTO & ~filters.COMMAND, usr_conv.payment_handler)],
-            K.STATE_EDIT_CHOICE: [
-                CallbackQueryHandler(usr_conv.edit_choice_desc_callback, pattern="^edit_choice_desc$"),
-                CallbackQueryHandler(usr_conv.edit_choice_user_callback, pattern="^edit_choice_user$"),
-                CallbackQueryHandler(usr_conv.edit_choice_cancel_callback, pattern="^edit_choice_cancel$"),
-            ],
-            K.STATE_EDIT_DESC: [CommandHandler("cancel", usr_conv.cancel_riwayat_edit), MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.edit_desc_handler)],
-            K.STATE_EDIT_USER: [CommandHandler("cancel", usr_conv.cancel_riwayat_edit), MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.edit_user_handler)],
-        },
-        fallbacks=[
-            CommandHandler("cancel", usr_conv.cancel),
-            CallbackQueryHandler(usr_conv.cancel_submission_callback, pattern="^cancel_submission$"),
+    K.STATE_EDIT_PHOTO_CONFIRM: [MessageHandler(filters.PHOTO & ~filters.COMMAND, usr_conv.edit_photo_handler)],
+    K.STATE_EDIT_DESC_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.edit_desc_handler_from_confirm)],
+    K.STATE_EDIT_USER_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.edit_user_handler_from_confirm)],
+    K.STATE_WAITING_PAYMENT: [MessageHandler(filters.PHOTO & ~filters.COMMAND, usr_conv.payment_handler)],
+    K.STATE_EDIT_CHOICE: [
+        CallbackQueryHandler(usr_conv.edit_choice_desc_callback, pattern="^edit_choice_desc$"),
+        CallbackQueryHandler(usr_conv.edit_choice_user_callback, pattern="^edit_choice_user$"),
+        CallbackQueryHandler(usr_conv.edit_choice_cancel_callback, pattern="^edit_choice_cancel$"),
         ],
-        per_message=False,
+    K.STATE_EDIT_DESC: [CommandHandler("cancel", usr_conv.cancel_riwayat_edit), MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.edit_desc_handler)],
+    K.STATE_EDIT_USER: [CommandHandler("cancel", usr_conv.cancel_riwayat_edit), MessageHandler(filters.TEXT & ~filters.COMMAND, usr_conv.edit_user_handler)],
+    },
+    fallbacks=[
+        CommandHandler("cancel", usr_conv.cancel),
+        CallbackQueryHandler(usr_conv.cancel_submission_callback, pattern="^cancel_submission$"),
+    ],
+    per_message=False,
     )
+
  # Alur pembelian paket oleh pengguna
 user_package_conv = ConversationHandler(
-        entry_points=[CallbackQueryHandler(usr_conv.proceed_to_payment_callback, pattern=r"^proceed_payment:")],
-        states={K.STATE_WAITING_PACKAGE_PAYMENT: [MessageHandler(filters.PHOTO, usr_conv.package_payment_handler)]},
-        fallbacks=[CommandHandler("cancel", usr_conv.cancel)],
-        per_message=False,
-        name="user_package_conversation",
-    )
+    entry_points=[CallbackQueryHandler(usr_conv.proceed_to_payment_callback, pattern=r"^proceed_payment:")],
+    states={K.STATE_WAITING_PACKAGE_PAYMENT: [MessageHandler(filters.PHOTO, usr_conv.package_payment_handler)]},
+    fallbacks=[CommandHandler("cancel", usr_conv.cancel)],
+    per_message=False,
+    name="user_package_conversation",
+)
     
     # Semua alur percakapan admin digabung jadi satu untuk kerapian
 admin_conv = ConversationHandler(
-        entry_points=[
-            CallbackQueryHandler(adm_cb.admin_prompt_for_edit, pattern=r"^admin_edit_(desc|tele)$"),
-            CallbackQueryHandler(adm_conv.ask_for_package_type, pattern=r"^edit_start:(add_kuota|sub_kuota):"),
-            CallbackQueryHandler(adm_conv.ask_for_amount, pattern=r"^edit_start:(add_reward|sub_reward|add_poin|sub_poin):"),
-            CallbackQueryHandler(adm_conv.admin_broadcast_start, pattern="^admin_broadcast_start$"),
-            CallbackQueryHandler(adm_conv.admin_search_user_start, pattern="^admin_search_user_start$")
+    entry_points=[
+    CallbackQueryHandler(adm_cb.admin_prompt_for_edit, pattern=r"^admin_edit_(desc|tele)$"),
+    CallbackQueryHandler(adm_conv.ask_for_package_type, pattern=r"^edit_start:(add_kuota|sub_kuota):"),
+    CallbackQueryHandler(adm_conv.ask_for_amount, pattern=r"^edit_start:(add_reward|sub_reward|add_poin|sub_poin):"),
+    CallbackQueryHandler(adm_conv.admin_broadcast_start, pattern="^admin_broadcast_start$"),
+    CallbackQueryHandler(adm_conv.admin_search_user_start, pattern="^admin_search_user_start$")
         ],
-        states={
-            # State untuk edit pengajuan
-            K.STATE_ADMIN_EDIT_DESC_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, adm_conv.admin_get_new_desc)],
-            K.STATE_ADMIN_EDIT_TELE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, adm_conv.admin_get_new_tele)],
-            # State untuk edit kuota
-            K.STATE_ADMIN_CHOOSE_PKG_TYPE: [CallbackQueryHandler(adm_conv.ask_for_amount, pattern=r"^edit_pkg:"), CallbackQueryHandler(adm_conv.cancel_quota_edit, pattern="^admin_edit_cancel$")],
-            K.STATE_ADMIN_GET_EDIT_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, adm_conv.ask_for_confirmation)],
-            K.STATE_ADMIN_CONFIRM_EDIT: [CallbackQueryHandler(adm_conv.execute_amount_edit, pattern="^confirm_edit_yes$"), CallbackQueryHandler(adm_conv.cancel_quota_edit, pattern="^admin_edit_cancel$")],
-            # State untuk broadcast & search
-            K.STATE_ADMIN_GET_BROADCAST_MSG: [MessageHandler(filters.ALL & ~filters.COMMAND, adm_conv.admin_broadcast_get_message)],
-            K.STATE_ADMIN_SEARCH_USER_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, adm_conv.admin_search_user_handler)],
-        },
-        fallbacks=[CommandHandler("cancel", adm_conv.admin_cancel)],
-        per_message=False,
-        name="admin_main_conversation",
-    )
+    states={
+    # State untuk edit pengajuan
+    K.STATE_ADMIN_EDIT_DESC_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, adm_conv.admin_get_new_desc)],
+    K.STATE_ADMIN_EDIT_TELE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, adm_conv.admin_get_new_tele)],
+    # State untuk edit kuota
+    K.STATE_ADMIN_CHOOSE_PKG_TYPE: [CallbackQueryHandler(adm_conv.ask_for_amount, pattern=r"^edit_pkg:"), CallbackQueryHandler(adm_conv.cancel_quota_edit, pattern="^admin_edit_cancel$")],
+    K.STATE_ADMIN_GET_EDIT_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, adm_conv.ask_for_confirmation)],
+    K.STATE_ADMIN_CONFIRM_EDIT: [CallbackQueryHandler(adm_conv.execute_amount_edit, pattern="^confirm_edit_yes$"), CallbackQueryHandler(adm_conv.cancel_quota_edit, pattern="^admin_edit_cancel$")],
+    # State untuk broadcast & search
+    K.STATE_ADMIN_GET_BROADCAST_MSG: [MessageHandler(filters.ALL & ~filters.COMMAND, adm_conv.admin_broadcast_get_message)],
+    K.STATE_ADMIN_SEARCH_USER_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, adm_conv.admin_search_user_handler)],
+    },
+    fallbacks=[CommandHandler("cancel", adm_conv.admin_cancel)],
+    per_message=False,
+    name="admin_main_conversation",
+)
 
 
     # --- PENDAFTARAN HANDLER DENGAN URUTAN YANG BENAR DAN BERSIH ---
