@@ -7,6 +7,7 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ConversationHandler, filters
 )
+from supabase_persistence import SupabasePersistence
 
 # --- 1. Import semua file-mu ---
 import config
@@ -22,7 +23,11 @@ from handlers import admin_conversation as adm_conv, admin_callbacks as adm_cb
 
 # --- 2. Inisialisasi Bot ---
 # Kita beri nama 'application' agar tidak bentrok dengan Flask 'app'
-application = Application.builder().token(config.TOKEN).build()
+# Buat instance dari "otak" Supabase
+persistence = SupabasePersistence()
+
+# Berikan "otak" ini ke bot saat dibuat
+application = Application.builder().token(config.TOKEN).persistence(persistence).build()
 db.init_db()
 
 # --- 3. Definisi ConversationHandler ---
@@ -59,6 +64,7 @@ user_submission_conv = ConversationHandler(
         CallbackQueryHandler(usr_conv.cancel_submission_callback, pattern="^cancel_submission$"),
     ],
     per_message=False,
+    persistent=True,
     )
 
  # Alur pembelian paket oleh pengguna
