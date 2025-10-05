@@ -175,4 +175,4 @@ def webhook() -> str:
 
 @server.route('/')
 def index():
-    return 'Bot Jastip Aktif!
+    return 'Bot Jastip Aktif!'
