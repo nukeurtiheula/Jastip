@@ -107,3 +107,5 @@ class SupabasePersistence(BasePersistence):
     async def flush(self) -> None:
         # Tidak perlu, karena kita menyimpan langsung ke DB
         pass
+
+# tes
