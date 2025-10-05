@@ -67,7 +67,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         menu_msg = await context.bot.send_message(chat_id, text, reply_markup=keyboard, parse_mode="Markdown")
         
         db.db_execute("INSERT INTO user_rewards (u_id) VALUES (%s) ON CONFLICT (u_id) DO NOTHING;", (user.id,))
-        db.db_execute("UPDATE user_rewards SET last_menu_id = ? WHERE u_id = %s", (menu_msg.message_id, user.id))
+        db.db_execute("UPDATE user_rewards SET last_menu_id = %s WHERE u_id = %s", (menu_msg.message_id, user.id))
 
     except Exception as e:
         # Jika ada error database, cetak ke Vercel Logs dan beri tahu user
@@ -171,8 +171,8 @@ async def package_payment_handler(update: Update, context: ContextTypes.DEFAULT_
 
     db.db_execute("""
         UPDATE user_rewards 
-        SET pending_qris_msg_id = ?, pending_proof_msg_id = ? 
-        WHERE u_id = ?
+        SET pending_qris_msg_id = %s, pending_proof_msg_id = %s 
+        WHERE u_id = %s
     """, (qris_msg_id, proof_msg_id, user.id))
     
     # Kirim ke admin seperti biasa
@@ -340,16 +340,16 @@ async def confirm_final_continue_callback(update: Update, context: ContextTypes.
     kuota_terpakai = False
     
     if user_data.get('available_rewards', 0) > 0:
-        db.db_execute("UPDATE user_rewards SET available_rewards = available_rewards - 1 WHERE u_id = ?", (user.id,))
+        db.db_execute("UPDATE user_rewards SET available_rewards = available_rewards - 1 WHERE u_id = %s", (user.id,))
         submission_data["is_reward"] = 1; admin_caption_prefix = "🎁 <b>PENGAJUAN REWARD (GRATIS)</b>"; kuota_terpakai = True
     elif user_data.get('paket_sultan_posts', 0) > 0:
-        db.db_execute("UPDATE user_rewards SET paket_sultan_posts = paket_sultan_posts - 1 WHERE u_id = ?", (user.id,))
+        db.db_execute("UPDATE user_rewards SET paket_sultan_posts = paket_sultan_posts - 1 WHERE u_id = %s", (user.id,))
         admin_caption_prefix = "👑 <b>PENGAJUAN PAKET SULTAN</b>"; kuota_terpakai = True
     elif user_data.get('paket_hemat_posts', 0) > 0:
-        db.db_execute("UPDATE user_rewards SET paket_hemat_posts = paket_hemat_posts - 1 WHERE u_id = ?", (user.id,))
+        db.db_execute("UPDATE user_rewards SET paket_hemat_posts = paket_hemat_posts - 1 WHERE u_id = %s", (user.id,))
         admin_caption_prefix = "🎟️ <b>PENGAJUAN PAKET HEMAT</b>"; kuota_terpakai = True
     elif user_data.get('paket_dasar_posts', 0) > 0:
-        db.db_execute("UPDATE user_rewards SET paket_dasar_posts = paket_dasar_posts - 1 WHERE u_id = ?", (user.id,))
+        db.db_execute("UPDATE user_rewards SET paket_dasar_posts = paket_dasar_posts - 1 WHERE u_id = %s", (user.id,))
         admin_caption_prefix = "🎟️ <b>PENGAJUAN PAKET DASAR</b>"; kuota_terpakai = True
         
     if not kuota_terpakai:
