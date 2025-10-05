@@ -1,8 +1,12 @@
+import asyncio
+from flask import Flask, request
+from telegram import Update
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
-    ConversationHandler, filters, JobQueue, PicklePersistence
+    ConversationHandler, filters
 )
-from flask import Flask, request
+
+# --- 1. Import semua file-mu ---
 import config
 import database as db
 import constants as K
@@ -12,7 +16,7 @@ from handlers import admin_conversation as adm_conv, admin_callbacks as adm_cb
 def main():
     """Fungsi utama untuk menyiapkan dan menjalankan bot."""
     db.init_db()
-    app = Application.builder().token(config.TOKEN).job_queue(JobQueue()).persistence(my_persistence).build()
+    application = Application.builder().token(config.TOKEN).build()
 
     # --- SEMUA CONVERSATION HANDLER DIDEFINISIKAN DI SINI ---
 
@@ -62,7 +66,6 @@ def main():
         CallbackQueryHandler(usr_conv.cancel_submission_callback, pattern="^cancel_submission$"),
     ],
     per_message=False,
-    persistent=True,
     name="user_submission_conversation",
 )
 
@@ -72,7 +75,6 @@ def main():
         states={K.STATE_WAITING_PACKAGE_PAYMENT: [MessageHandler(filters.PHOTO, usr_conv.package_payment_handler)]},
         fallbacks=[CommandHandler("cancel", usr_conv.cancel)],
         per_message=False,
-        persistent=True,
         name="user_package_conversation",
     )
     
@@ -99,7 +101,6 @@ def main():
         },
         fallbacks=[CommandHandler("cancel", adm_conv.admin_cancel)],
         per_message=False,
-        persistent=True,
         name="admin_main_conversation",
     )
 
@@ -154,11 +155,24 @@ def main():
     # Handler ini akan menangani semua tombol yang tidak cocok dengan handler di atasnya.
     app.add_handler(CallbackQueryHandler(usr_cb.handle_unknown_callback, pattern=r"."))
 
-app = Flask(__name__)
+server = Flask(__name__)
 
-@app.route('/', methods=['POST']) # <-- Ini adalah pintu masuknya
-async def webhook():
-    # Setiap ada "ketukan" di pintu, fungsi ini dijalankan
-    update = Update.de_json(request.get_json(), application.bot)
-    await application.process_update(update) # <-- Pesan diserahkan ke bot untuk diproses
-    return "ok"
+@server.route('/', methods=['POST'])
+def webhook() -> str:
+    """Webhook SYNC yang memanggil proses ASYNC bot."""
+    try:
+        update_data = request.get_json()
+        update = Update.de_json(update_data, application.bot)
+        
+        # Cara aman menjalankan fungsi async dari fungsi sync
+        asyncio.run(application.process_update(update))
+        
+        return "ok"
+    except Exception as e:
+        # Cetak error ke Vercel Logs untuk debugging
+        config.logger.error(f"Error processing webhook: {e}", exc_info=True)
+        return "error"
+
+@server.route('/')
+def index():
+    return 'Bot Jastip Aktif!
