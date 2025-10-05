@@ -12,7 +12,6 @@ from handlers import admin_conversation as adm_conv, admin_callbacks as adm_cb
 def main():
     """Fungsi utama untuk menyiapkan dan menjalankan bot."""
     db.init_db()
-    my_persistence = PicklePersistence(filepath="jastip_persistence.pickle")
     app = Application.builder().token(config.TOKEN).job_queue(JobQueue()).persistence(my_persistence).build()
 
     # --- SEMUA CONVERSATION HANDLER DIDEFINISIKAN DI SINI ---
