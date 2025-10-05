@@ -77,8 +77,8 @@ async def confirm_package_callback(update: Update, context: ContextTypes.DEFAULT
     package_details = {'dasar': {'posts': 3, 'name': 'Dasar'}, 'hemat': {'posts': 7, 'name': 'Hemat'}, 'sultan': {'posts': 15, 'name': 'Sultan'}}
     details = package_details.get(package_name)
     if not details: return await query.edit_message_text("❌ Paket tidak valid.")
-    db.db_execute("INSERT OR IGNORE INTO user_rewards (u_id) VALUES (?)", (user_id,))
-    db.db_execute(f"UPDATE user_rewards SET paket_{package_name}_posts = paket_{package_name}_posts + ? WHERE u_id = ?", (details['posts'], user_id))
+    db.db_execute("INSERT OR IGNORE INTO user_rewards (u_id) VALUES (%s)", (user_id,))
+    db.db_execute(f"UPDATE user_rewards SET paket_{package_name}_posts = paket_{package_name}_posts + %s WHERE u_id = %s", (details['posts'], user_id))
     reward_diberikan = False
     if package_name == 'dasar':
         reward_diberikan = db.increment_and_check_reward(user_id)
@@ -451,7 +451,7 @@ async def admin_choose_user_list(update: Update, context: ContextTypes.DEFAULT_T
     keyboard_rows = []
     for user_row in paginated_users:
         u_id = user_row['u_id']
-        latest_submission = db.db_execute("SELECT u_name FROM submissions WHERE u_id = ? ORDER BY timestamp DESC LIMIT 1", (u_id,), fetchone=True)
+        latest_submission = db.db_execute("SELECT u_name FROM submissions WHERE u_id = %s ORDER BY timestamp DESC LIMIT 1", (u_id,), fetchone=True)
         u_name = latest_submission['u_name'] if latest_submission else f"ID_{u_id}"
         keyboard_rows.append([InlineKeyboardButton(f"@{u_name} ({u_id})", callback_data=f"admin_manage_user:{u_id}")])
     nav = [InlineKeyboardButton("<<", callback_data=f"admin_choose_user:{action}:{page-1}") if page > 0 else None,
@@ -466,7 +466,7 @@ async def admin_user_management_menu(update: Update, context: ContextTypes.DEFAU
     target_id = int(user_id_str)
     context.chat_data['admin_target_uid'] = target_id
     user_data = db.get_user_data(target_id)
-    user_name = db.db_execute("SELECT u_name FROM submissions WHERE u_id = ? ORDER BY timestamp DESC LIMIT 1", (target_id,), fetchone=True)
+    user_name = db.db_execute("SELECT u_name FROM submissions WHERE u_id = %s ORDER BY timestamp DESC LIMIT 1", (target_id,), fetchone=True)
     target_name = user_name['u_name'] if user_name else f"ID_{target_id}"
     text = f"👤 Mengelola Pengguna: *@{target_name}* (`{target_id}`)\n\nPilih tindakan:"
     is_banned = user_data and user_data.get('is_banned')
@@ -483,10 +483,10 @@ async def admin_info_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query; await query.answer()
     _, target_id_str = query.data.split(':')
     target_id = int(target_id_str)
-    user_submission_data = db.db_execute("SELECT u_name FROM submissions WHERE u_id = ? ORDER BY timestamp DESC LIMIT 1", (target_id,), fetchone=True)
+    user_submission_data = db.db_execute("SELECT u_name FROM submissions WHERE u_id = %s ORDER BY timestamp DESC LIMIT 1", (target_id,), fetchone=True)
     target_name = user_submission_data['u_name'] if user_submission_data else f"ID_{target_id}"
     user_data = db.get_user_data(target_id) or {}
-    submissions = db.db_execute("SELECT status, pet_name FROM submissions WHERE u_id = ? ORDER BY timestamp DESC LIMIT 5", (target_id,), fetchall=True)
+    submissions = db.db_execute("SELECT status, pet_name FROM submissions WHERE u_id = %s ORDER BY timestamp DESC LIMIT 5", (target_id,), fetchall=True)
     history_text = "\n".join([f"- `{s['status'].upper()}`: {s['pet_name'][:30]}..." for s in submissions]) if submissions else "Belum ada."
     kuota_texts = []
     if user_data.get('available_rewards', 0) > 0: kuota_texts.append(f"  - 🎁 Tiket Reward: *{user_data['available_rewards']}*")
@@ -508,15 +508,15 @@ async def admin_confirm_action_callback(update: Update, context: ContextTypes.DE
     parts = query.data.split(':')
     action = parts[0].split('_')[-1]
     target_id = int(parts[1])
-    user_submission_data = db.db_execute("SELECT u_name FROM submissions WHERE u_id = ? ORDER BY timestamp DESC LIMIT 1", (target_id,), fetchone=True)
+    user_submission_data = db.db_execute("SELECT u_name FROM submissions WHERE u_id = %s ORDER BY timestamp DESC LIMIT 1", (target_id,), fetchone=True)
     target_name = user_submission_data['u_name'] if user_submission_data else f"ID_{target_id}"
     message_text = "❌ Aksi tidak diketahui."
     if action == 'ban':
-        db.db_execute("INSERT OR IGNORE INTO user_rewards (u_id) VALUES (?)", (target_id,))
-        db.db_execute("UPDATE user_rewards SET is_banned = 1 WHERE u_id = ?", (target_id,))
+        db.db_execute("INSERT OR IGNORE INTO user_rewards (u_id) VALUES (%s)", (target_id,))
+        db.db_execute("UPDATE user_rewards SET is_banned = 1 WHERE u_id = %s", (target_id,))
         message_text = f"🚫 Pengguna `@{target_name}` telah di-BAN."
     elif action == 'unban':
-        db.db_execute("UPDATE user_rewards SET is_banned = 0 WHERE u_id = ?", (target_id,))
+        db.db_execute("UPDATE user_rewards SET is_banned = 0 WHERE u_id = %s", (target_id,))
         message_text = f"✅ Pengguna `@{target_name}` telah di-UNBAN."
     await query.edit_message_text(message_text, parse_mode="Markdown")
     await asyncio.sleep(2)

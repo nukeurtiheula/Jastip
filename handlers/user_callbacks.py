@@ -113,7 +113,7 @@ async def back_to_main_menu_callback(update: Update, context: ContextTypes.DEFAU
         else:
             await query.edit_message_text(text=text, reply_markup=keyboard, parse_mode="Markdown")
             message_id_to_save = query.message.message_id
-        db.db_execute("UPDATE user_rewards SET last_menu_id = ? WHERE u_id = ?", (message_id_to_save, user.id))
+        db.db_execute("UPDATE user_rewards SET last_menu_id = %s WHERE u_id = %s", (message_id_to_save, user.id))
     except Exception as e:
         config.logger.error(f"Kegagalan total saat kembali ke menu utama: {e}")
         from handlers.user_conversation import start
@@ -181,5 +181,5 @@ async def handle_unknown_callback(update: Update, context: ContextTypes.DEFAULT_
         except: pass
         text, keyboard = utils.build_main_menu_message(user.id, user.username or "User")
         menu_msg = await context.bot.send_message(chat_id=user.id, text=text, reply_markup=keyboard, parse_mode="Markdown")
-        db.db_execute("INSERT OR IGNORE INTO user_rewards (u_id) VALUES (?)", (user.id,))
-        db.db_execute("UPDATE user_rewards SET last_menu_id = ? WHERE u_id = ?", (menu_msg.message_id, user.id))
+        db.db_execute("INSERT OR IGNORE INTO user_rewards (u_id) VALUES (%s)", (user.id,))
+        db.db_execute("UPDATE user_rewards SET last_menu_id = %s WHERE u_id = %s", (menu_msg.message_id, user.id))

@@ -92,7 +92,7 @@ async def admin_search_user_handler(update: Update, context: ContextTypes.DEFAUL
     
     # Cari semua user unik yang cocok dengan input
     users = db.db_execute(
-        "SELECT DISTINCT u_id, u_name FROM submissions WHERE u_name LIKE ?",
+        "SELECT DISTINCT u_id, u_name FROM submissions WHERE u_name LIKE %s",
         (f'%{user_input}%',),
         fetchall=True
     )
@@ -313,10 +313,10 @@ async def execute_amount_edit(update: Update, context: ContextTypes.DEFAULT_TYPE
     # Update Database
     if action in ["add_kuota", "sub_kuota"]:
         field = f"paket_{pkg_type}_posts"; operator = "+" if action == "add_kuota" else "-"
-        db.db_execute(f"UPDATE user_rewards SET {field} = MAX(0, {field} {operator} ?) WHERE u_id = ?", (amount, user_id))
+        db.db_execute(f"UPDATE user_rewards SET {field} = MAX(0, {field} {operator} %s) WHERE u_id = %s", (amount, user_id))
     elif action in ["add_reward", "sub_reward"]:
         operator = "+" if action == "add_reward" else "-"
-        db.db_execute(f"UPDATE user_rewards SET available_rewards = MAX(0, available_rewards {operator} ?) WHERE u_id = ?", (amount, user_id))
+        db.db_execute(f"UPDATE user_rewards SET available_rewards = MAX(0, available_rewards {operator} %s) WHERE u_id = %s", (amount, user_id))
     elif action in ["add_poin", "sub_poin"]:
         points_to_change = amount if action == "add_poin" else -amount
         db.increment_and_check_reward(user_id, points_to_add=points_to_change)
@@ -326,7 +326,7 @@ async def execute_amount_edit(update: Update, context: ContextTypes.DEFAULT_TYPE
     # Refresh UI Admin & User (sama seperti di handle_amount_input)
     target_id = user_id
     user_data_admin = db.get_user_data(target_id)
-    user_name_row = db.db_execute("SELECT u_name FROM submissions WHERE u_id = ? ORDER BY timestamp DESC LIMIT 1", (target_id,), fetchone=True)
+    user_name_row = db.db_execute("SELECT u_name FROM submissions WHERE u_id = %s ORDER BY timestamp DESC LIMIT 1", (target_id,), fetchone=True)
     target_name = user_name_row['u_name'] if user_name_row else f"ID_{target_id}"
     text = f"👤 Mengelola Pengguna: <b>@{target_name}</b> (<code>{target_id}</code>)\n\nPilih tindakan:"
     is_banned = user_data_admin and user_data_admin.get('is_banned')
@@ -378,11 +378,11 @@ async def handle_amount_input(update: Update, context: ContextTypes.DEFAULT_TYPE
     # Logika Update Database
     if action in ["add_kuota", "sub_kuota"]:
         field = f"paket_{pkg_type}_posts"; operator = "+" if action == "add_kuota" else "-"
-        db.db_execute(f"UPDATE user_rewards SET {field} = MAX(0, {field} {operator} ?) WHERE u_id = ?", (amount, user_id))
+        db.db_execute(f"UPDATE user_rewards SET {field} = MAX(0, {field} {operator} %s) WHERE u_id = %s", (amount, user_id))
         success_text = f"Kuota {pkg_type.title()} berhasil diubah."
     elif action in ["add_reward", "sub_reward"]:
         operator = "+" if action == "add_reward" else "-"
-        db.db_execute(f"UPDATE user_rewards SET available_rewards = MAX(0, available_rewards {operator} ?) WHERE u_id = ?", (amount, user_id))
+        db.db_execute(f"UPDATE user_rewards SET available_rewards = MAX(0, available_rewards {operator} %s) WHERE u_id = %s", (amount, user_id))
         success_text = f"Tiket Reward berhasil diubah."
     elif action in ["add_poin", "sub_poin"]:
         points_to_change = amount if action == "add_poin" else -amount
@@ -397,7 +397,7 @@ async def handle_amount_input(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     target_id = user_id
     user_data_admin = db.get_user_data(target_id)
-    user_name_row = db.db_execute("SELECT u_name FROM submissions WHERE u_id = ? ORDER BY timestamp DESC LIMIT 1", (target_id,), fetchone=True)
+    user_name_row = db.db_execute("SELECT u_name FROM submissions WHERE u_id = %s ORDER BY timestamp DESC LIMIT 1", (target_id,), fetchone=True)
     target_name = user_name_row['u_name'] if user_name_row else f"ID_{target_id}"
     text = f"👤 Mengelola Pengguna: <b>@{target_name}</b> (<code>{target_id}</code>)\n\nPilih tindakan:"
     is_banned = user_data_admin and user_data_admin.get('is_banned')
