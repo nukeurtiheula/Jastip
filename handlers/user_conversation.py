@@ -52,25 +52,28 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return ConversationHandler.END
 
     try:
-        if update.message: await update.message.delete()
-    except Exception: pass
-    
-    if db.is_user_banned(user.id):
-        await context.bot.send_message(user.id, "🚫 Akun Anda telah diblokir.")
-        return ConversationHandler.END
-        
-    user_reward_data = db.get_user_data(user.id)
-    if user_reward_data and user_reward_data['last_menu_id']:
-        try:
-            await context.bot.delete_message(chat_id=chat_id, message_id=user_reward_data['last_menu_id'])
-        except Exception:
-            pass
+        if db.is_user_banned(user.id):
+            await context.bot.send_message(user.id, "🚫 Akun Anda telah diblokir.")
+            return ConversationHandler.END
             
-    text, keyboard = utils.build_main_menu_message(user.id, user.username or "User")
-    menu_msg = await context.bot.send_message(chat_id, text, reply_markup=keyboard, parse_mode="Markdown")
-    
-    db.db_execute("INSERT OR IGNORE INTO user_rewards (u_id) VALUES (?)", (user.id,))
-    db.db_execute("UPDATE user_rewards SET last_menu_id = ? WHERE u_id = ?", (menu_msg.message_id, user.id))
+        user_reward_data = db.get_user_data(user.id)
+        if user_reward_data and user_reward_data['last_menu_id']:
+            try:
+                await context.bot.delete_message(chat_id=chat_id, message_id=user_reward_data['last_menu_id'])
+            except Exception:
+                pass
+                
+        text, keyboard = utils.build_main_menu_message(user.id, user.username or "User")
+        menu_msg = await context.bot.send_message(chat_id, text, reply_markup=keyboard, parse_mode="Markdown")
+        
+        db.db_execute("INSERT OR IGNORE INTO user_rewards (u_id) VALUES (?)", (user.id,))
+        db.db_execute("UPDATE user_rewards SET last_menu_id = ? WHERE u_id = ?", (menu_msg.message_id, user.id))
+
+    except Exception as e:
+        # Jika ada error database, cetak ke Vercel Logs dan beri tahu user
+        config.logger.error(f"DATABASE ERROR in start handler: {e}", exc_info=True)
+        await context.bot.send_message(chat_id, "⚠️ Maaf, terjadi kesalahan saat mengambil data Anda. Coba lagi nanti.")
+        return ConversationHandler.END
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
