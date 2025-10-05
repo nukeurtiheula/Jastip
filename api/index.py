@@ -22,12 +22,12 @@ from handlers import admin_conversation as adm_conv, admin_callbacks as adm_cb
 
 # --- 2. Inisialisasi Bot ---
 # Kita beri nama 'application' agar tidak bentrok dengan Flask 'app'
-    application = Application.builder().token(config.TOKEN).build()
-    db.init_db()
+application = Application.builder().token(config.TOKEN).build()
+db.init_db()
 
 # --- 3. Definisi ConversationHandler ---
 # (Ini adalah blok kode ConversationHandler-mu yang LENGKAP)
-    user_submission_conv = ConversationHandler(
+user_submission_conv = ConversationHandler(
         entry_points=[
             CallbackQueryHandler(usr_conv.mulai_submit_callback, pattern="^mulai_submit$"),
             CallbackQueryHandler(usr_conv.user_edit_callback, pattern=r"^edit:"),
@@ -61,7 +61,7 @@ from handlers import admin_conversation as adm_conv, admin_callbacks as adm_cb
         per_message=False,
     )
  # Alur pembelian paket oleh pengguna
-    user_package_conv = ConversationHandler(
+user_package_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(usr_conv.proceed_to_payment_callback, pattern=r"^proceed_payment:")],
         states={K.STATE_WAITING_PACKAGE_PAYMENT: [MessageHandler(filters.PHOTO, usr_conv.package_payment_handler)]},
         fallbacks=[CommandHandler("cancel", usr_conv.cancel)],
@@ -70,7 +70,7 @@ from handlers import admin_conversation as adm_conv, admin_callbacks as adm_cb
     )
     
     # Semua alur percakapan admin digabung jadi satu untuk kerapian
-    admin_conv = ConversationHandler(
+admin_conv = ConversationHandler(
         entry_points=[
             CallbackQueryHandler(adm_cb.admin_prompt_for_edit, pattern=r"^admin_edit_(desc|tele)$"),
             CallbackQueryHandler(adm_conv.ask_for_package_type, pattern=r"^edit_start:(add_kuota|sub_kuota):"),
