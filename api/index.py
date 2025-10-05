@@ -155,24 +155,19 @@ def main():
     # Handler ini akan menangani semua tombol yang tidak cocok dengan handler di atasnya.
     app.add_handler(CallbackQueryHandler(usr_cb.handle_unknown_callback, pattern=r"."))
 
-server = Flask(__name__)
+app = Flask(__name__)
 
-@server.route('/', methods=['POST'])
+@app.route('/', methods=['POST'])
 def webhook() -> str:
-    """Webhook SYNC yang memanggil proses ASYNC bot."""
     try:
         update_data = request.get_json()
         update = Update.de_json(update_data, application.bot)
-        
-        # Cara aman menjalankan fungsi async dari fungsi sync
         asyncio.run(application.process_update(update))
-        
         return "ok"
     except Exception as e:
-        # Cetak error ke Vercel Logs untuk debugging
         config.logger.error(f"Error processing webhook: {e}", exc_info=True)
         return "error"
 
-@server.route('/')
+@app.route('/')
 def index():
     return 'Bot Jastip Aktif!'
