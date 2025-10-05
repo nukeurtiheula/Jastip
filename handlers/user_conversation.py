@@ -89,7 +89,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
     
     cancel_msg = await context.bot.send_message(user_id, "ℹ️ Aksi dibatalkan.")
-    context.job_queue.run_once(utils.delete_message_after_delay, 2, chat_id=user_id, data={'message_id': cancel_msg.message_id})
+    #context.job_queue.run_once(utils.delete_message_after_delay, 2, chat_id=user_id, data={'message_id': cancel_msg.message_id})
     await start(update, context)
     return ConversationHandler.END
 
@@ -657,7 +657,7 @@ async def cancel_riwayat_edit(update: Update, context: ContextTypes.DEFAULT_TYPE
         
     # 3. Beri notifikasi singkat bahwa aksi dibatalkan
     cancel_msg = await context.bot.send_message(user_id, "ℹ️ Proses edit dibatalkan.")
-    context.job_queue.run_once(utils.delete_message_after_delay, 2, chat_id=user_id, data={'message_id': cancel_msg.message_id})
+    #context.job_queue.run_once(utils.delete_message_after_delay, 2, chat_id=user_id, data={'message_id': cancel_msg.message_id})
 
     # 4. Bangun ulang dan tampilkan kembali menu Riwayat Aktif
     user_items = db.get_submissions_by_user(user_id)
