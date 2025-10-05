@@ -58,7 +58,7 @@ async def lihat_riwayat_callback(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer("Memuat...")
     user_id = query.from_user.id
-    db.db_execute("UPDATE user_rewards SET last_menu_id = NULL WHERE u_id = ?", (user_id,))
+    db.db_execute("UPDATE user_rewards SET last_menu_id = NULL WHERE u_id = %s", (user_id,))
     
     callback_data = query.data.replace('|', ':')
     page = int(callback_data.split(":")[1])
